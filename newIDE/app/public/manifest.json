@@ -1,0 +1,45 @@
+{
+  "short_name": "VoxForge",
+  "name": "VoxForge",
+  "icons": [
+    {
+      "src": "/android-chrome-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/android-chrome-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "screenshot-wide-1.png",
+      "sizes": "3024x1890",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "VoxForge"
+    },
+    {
+      "src": "screenshot-wide-2.png",
+      "sizes": "3024x1890",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "VoxForge"
+    },
+    {
+      "src": "screenshot-wide-3.png",
+      "sizes": "3024x1890",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "VoxForge"
+    }
+  ],
+  "description": "Build your own game super fast and without programming. Publish on mobile, desktop and on the web.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay"],
+  "theme_color": "#050506",
+  "background_color": "#050506"
+}

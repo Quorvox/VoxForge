@@ -1,0 +1,690 @@
+// @flow
+import * as React from 'react';
+import { t, Trans } from '@lingui/macro';
+import { I18n } from '@lingui/react';
+import { type I18n as I18nType } from '@lingui/core';
+import Tooltip from '@material-ui/core/Tooltip';
+import { LineStackLayout } from '../UI/Layout';
+import {
+  type FileMetadata,
+  type FileMetadataAndStorageProviderName,
+  type StorageProvider,
+} from '../ProjectsStorage';
+import Text from '../UI/Text';
+import { GameThumbnail } from './GameThumbnail';
+import { type MenuItemTemplate } from '../UI/Menu/Menu.flow';
+import {
+  getGameMainImageUrl,
+  type Game,
+} from '../Utils/GDevelopServices/Game';
+import { type CloudProjectWithUserAccessInfo } from '../Utils/GDevelopServices/Project';
+import GDevelopThemeContext from '../UI/Theme/GDevelopThemeContext';
+import { useResponsiveWindowSize } from '../UI/Responsive/ResponsiveWindowMeasurer';
+import { getStorageProviderByInternalName } from '../MainFrame/EditorContainers/HomePage/CreateSection/utils';
+import useOnResize from '../Utils/UseOnResize';
+import useForceUpdate from '../Utils/UseForceUpdate';
+import RaisedButtonWithSplitMenu from '../UI/RaisedButtonWithSplitMenu';
+import { type LastModifiedInfoByProjectId } from '../MainFrame/EditorContainers/HomePage/CreateSection/utils';
+import AuthenticatedUserContext from '../Profile/AuthenticatedUserContext';
+import useAlertDialog from '../UI/Alert/useAlertDialog';
+import LastModificationInfo from '../MainFrame/EditorContainers/HomePage/CreateSection/LastModificationInfo';
+import optionalRequire from '../Utils/OptionalRequire';
+import RaisedButton from '../UI/RaisedButton';
+import { Line, Spacer } from '../UI/Grid';
+import ElementWithMenu from '../UI/Menu/ElementWithMenu';
+import IconButton from '../UI/IconButton';
+import ThreeDotsMenu from '../UI/CustomSvgIcons/ThreeDotsMenu';
+import History from '../UI/CustomSvgIcons/History';
+import WarningRound from '../UI/CustomSvgIcons/WarningRound';
+import PreferencesContext from '../MainFrame/Preferences/PreferencesContext';
+import { textEllipsisStyle } from '../UI/TextEllipsis';
+import { getRelativeOrAbsoluteDisplayDate } from '../Utils/DateDisplay';
+import classNames from 'classnames';
+import classes from './GameDashboardCard.module.css';
+import { vf } from '../Utils/i18n/vfStrings';
+
+// It's important to use remote and not electron for folder actions,
+// otherwise they will be opened in the background.
+// See https://github.com/electron/electron/issues/4349#issuecomment-777475765
+const remote = optionalRequire('@electron/remote');
+const shell = remote ? remote.shell : null;
+const path = optionalRequire('path');
+
+export const getThumbnailWidth = ({
+  isMobile,
+}: {|
+  isMobile: boolean,
+|}): void | number =>
+  isMobile ? undefined : Math.min(245, Math.max(130, window.innerWidth / 4));
+
+export const getProjectDisplayDate = (
+  i18n: I18nType,
+  date: number
+): React.Node =>
+  getRelativeOrAbsoluteDisplayDate({
+    i18n,
+    dateAsNumber: date,
+    sameDayFormat: 'todayAndHour',
+    dayBeforeFormat: 'yesterdayAndHour',
+    relativeLimit: 'currentWeek',
+    sameWeekFormat: 'thisWeek',
+  });
+export const getDetailedProjectDisplayDate = (
+  i18n: I18nType,
+  date: number
+): any =>
+  i18n.date(date, {
+    dateStyle: 'short',
+    timeStyle: 'short',
+  });
+
+const getNoProjectAlertMessage = () => {
+  if (!remote) {
+    // Trying to open a local project from the web app of the mobile app.
+    return t`Looks like your project isn't there!${'\n\n'}Your project must be stored on your computer.`;
+  } else {
+    return t`We couldn't find your project.${'\n\n'}If your project is stored on a different computer, launch GDevelop on that computer.${'\n'}Otherwise, use the "Open project" button and find it in your filesystem.`;
+  }
+};
+
+const styles = {
+  tooltipButtonContainer: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'stretch',
+  },
+  buttonsContainer: {
+    display: 'flex',
+    flexShrink: 0,
+    flexDirection: 'column',
+    justifyContent: 'center',
+  },
+  iconAndText: { display: 'flex', gap: 2, alignItems: 'flex-start' },
+  erasureInfo: { display: 'flex', gap: 4, alignItems: 'center' },
+  erasureIconContainer: {
+    fontSize: 16,
+    display: 'flex',
+    alignItems: 'center',
+  },
+  title: {
+    ...textEllipsisStyle,
+    overflowWrap: 'break-word',
+  },
+  projectFilesButton: { minWidth: 32 },
+  fileIcon: {
+    width: 16,
+    height: 16,
+  },
+};
+
+const locateProjectFile = (file: FileMetadataAndStorageProviderName) => {
+  if (!shell) return;
+  shell.showItemInFolder(path.resolve(file.fileMetadata.fileIdentifier));
+};
+
+const getFileNameWithoutExtensionFromPath = (path: string) => {
+  // Normalize path separators for cross-platform compatibility
+  const normalizedPath = path.replace(/\\/g, '/');
+
+  // Extract file name
+  const fileName = normalizedPath.split('/').pop();
+
+  // Handle dotfiles and files without extensions
+  if (fileName) {
+    const parts = fileName.split('.');
+    return parts.length > 1 ? parts.slice(0, -1).join('.') : fileName;
+  }
+
+  return '';
+};
+
+const getProjectItemLabel = (
+  file: FileMetadataAndStorageProviderName,
+  storageProviders: Array<StorageProvider>,
+  i18n: I18nType
+): string => {
+  const fileMetadataName = file.fileMetadata.name || '-';
+  const name =
+    file.storageProviderName === 'LocalFile'
+      ? getFileNameWithoutExtensionFromPath(file.fileMetadata.fileIdentifier) ||
+        fileMetadataName
+      : fileMetadataName;
+  const storageProvider = getStorageProviderByInternalName(
+    storageProviders,
+    file.storageProviderName
+  );
+  return i18n._(
+    `${name} (${
+      storageProvider ? i18n._(storageProvider.name) : file.storageProviderName
+    })`
+  );
+};
+
+export type DashboardItem = {|
+  game?: Game, // A project can not be published, and thus not have a game.
+  projectFiles?: Array<FileMetadataAndStorageProviderName>, // A game can have no or multiple projects.
+  deletedCloudProject?: CloudProjectWithUserAccessInfo, // A deleted cloud project, displayed with limited info and a restore action.
+|};
+
+type Props = {|
+  dashboardItem: DashboardItem,
+  storageProviders: Array<StorageProvider>,
+  isCurrentProjectOpened: boolean,
+  onOpenGameManager: ({ game: Game, widgetToScrollTo?: 'projects' }) => void,
+  onOpenProject: (file: FileMetadataAndStorageProviderName) => Promise<void>,
+  onUnregisterGame: () => Promise<void>,
+  disabled: boolean,
+  canSaveProject: boolean,
+  askToCloseProject: () => Promise<boolean>,
+  closeProject: () => Promise<void>,
+  onSaveProject: () => Promise<?FileMetadata>,
+  lastModifiedInfoByProjectId: LastModifiedInfoByProjectId,
+  currentFileMetadata: ?FileMetadata,
+  onRefreshGames: () => Promise<void>,
+  onDeleteCloudProject: (
+    file: FileMetadataAndStorageProviderName
+  ) => Promise<void>,
+  onRegisterProject: (
+    file: FileMetadataAndStorageProviderName
+  ) => Promise<?Game>,
+  onRestoreProject?: () => Promise<void>,
+|};
+
+const GameDashboardCard = ({
+  dashboardItem,
+  storageProviders,
+  isCurrentProjectOpened,
+  onOpenGameManager,
+  onOpenProject,
+  onUnregisterGame,
+  disabled,
+  canSaveProject,
+  askToCloseProject,
+  closeProject,
+  onSaveProject,
+  lastModifiedInfoByProjectId,
+  currentFileMetadata,
+  onRefreshGames,
+  onDeleteCloudProject,
+  onRegisterProject,
+  onRestoreProject,
+}: Props): React.Node => {
+  useOnResize(useForceUpdate());
+  const [isRestoring, setIsRestoring] = React.useState(false);
+  const projectsList = React.useMemo(() => dashboardItem.projectFiles || [], [
+    dashboardItem.projectFiles,
+  ]);
+  const game = dashboardItem.game;
+  const deletedCloudProject = dashboardItem.deletedCloudProject;
+  const projectFileMetadataAndStorageProviderName = projectsList.length
+    ? projectsList[0]
+    : null;
+  const lastModifiedInfo = projectFileMetadataAndStorageProviderName
+    ? lastModifiedInfoByProjectId[
+        projectFileMetadataAndStorageProviderName.fileMetadata.fileIdentifier
+      ]
+    : null;
+
+  const authenticatedUser = React.useContext(AuthenticatedUserContext);
+  const { limits } = authenticatedUser;
+  const { removeRecentProjectFile } = React.useContext(PreferencesContext);
+  const { showAlert, showDeleteConfirmation } = useAlertDialog();
+
+  const isPublishedOnGdGames = !!game && !!game.publicWebBuildId;
+  const countOfSessionsLastWeek =
+    (game && game.cachedLastWeekSessionsCount) || 0;
+
+  const gameThumbnailUrl = React.useMemo(
+    () => (game ? getGameMainImageUrl(game) : null),
+    [game]
+  );
+  const untrimmedGameName = game
+    ? game.gameName
+    : projectFileMetadataAndStorageProviderName
+    ? projectFileMetadataAndStorageProviderName.fileMetadata.name
+    : deletedCloudProject
+    ? deletedCloudProject.name
+    : null;
+  const gameName = untrimmedGameName ? untrimmedGameName.trim() : null;
+
+  const { isMobile, windowSize } = useResponsiveWindowSize();
+  const isSmallOrMediumScreen =
+    windowSize === 'small' || windowSize === 'medium';
+  const gdevelopTheme = React.useContext(GDevelopThemeContext);
+  const itemStorageProvider = projectFileMetadataAndStorageProviderName
+    ? getStorageProviderByInternalName(
+        storageProviders,
+        projectFileMetadataAndStorageProviderName.storageProviderName
+      )
+    : null;
+
+  const renderLastModification = (i18n: I18nType) =>
+    deletedCloudProject ? (
+      <LineStackLayout noMargin expand>
+        <Text color="secondary" noMargin size="body-small">
+          <Trans>Deleted on:</Trans>
+        </Text>
+        <Tooltip
+          placement="right"
+          title={getDetailedProjectDisplayDate(
+            i18n,
+            Date.parse(deletedCloudProject.deletedAt || '')
+          )}
+        >
+          <Text color="secondary" noMargin size="body-small">
+            {getProjectDisplayDate(
+              i18n,
+              Date.parse(deletedCloudProject.deletedAt || '')
+            )}
+          </Text>
+        </Tooltip>
+      </LineStackLayout>
+    ) : projectFileMetadataAndStorageProviderName ? (
+      <LastModificationInfo
+        file={projectFileMetadataAndStorageProviderName}
+        lastModifiedInfo={lastModifiedInfo}
+        storageProvider={itemStorageProvider}
+        authenticatedUser={authenticatedUser}
+        currentFileMetadata={currentFileMetadata}
+        textColor="secondary"
+        textSize="body-small"
+        textPrefix={isCurrentProjectOpened ? null : <Trans>Last edited:</Trans>}
+      />
+    ) : game ? (
+      <LineStackLayout noMargin expand>
+        <Text color="secondary" noMargin size="body-small">
+          {!itemStorageProvider && isCurrentProjectOpened ? (
+            <Trans>Draft created:</Trans>
+          ) : (
+            <Trans>Last edited:</Trans>
+          )}
+        </Text>
+        <Tooltip
+          placement="right"
+          title={getDetailedProjectDisplayDate(
+            i18n,
+            (game.updatedAt || 0) * 1000
+          )}
+        >
+          <Text color="secondary" noMargin size="body-small">
+            {getProjectDisplayDate(i18n, (game.updatedAt || 0) * 1000)}
+          </Text>
+        </Tooltip>
+      </LineStackLayout>
+    ) : null;
+
+  const renderStorageProvider = (i18n: I18nType) => {
+    // Don't display any storage provider information for a deleted project.
+    if (deletedCloudProject) return null;
+
+    const icon = itemStorageProvider ? (
+      itemStorageProvider.renderIcon ? (
+        itemStorageProvider.renderIcon({
+          size: 'small',
+        })
+      ) : null
+    ) : (
+      <WarningRound />
+    );
+    const name = itemStorageProvider ? (
+      i18n._(itemStorageProvider.name)
+    ) : isCurrentProjectOpened ? (
+      <Trans>Project not saved</Trans>
+    ) : (
+      <Trans>Project not found</Trans>
+    );
+
+    return (
+      <Line noMargin alignItems="center">
+        {icon && (
+          <>
+            {icon}
+            <Spacer />
+          </>
+        )}
+        <Text noMargin color="secondary">
+          {name}
+        </Text>
+      </Line>
+    );
+  };
+
+  const renderThumbnail = () => (
+    <GameThumbnail
+      gameName={gameName || 'unknown game'}
+      gameId={game ? game.id : undefined}
+      thumbnailUrl={gameThumbnailUrl}
+      background="light"
+      width={isMobile ? undefined : 168}
+    />
+  );
+
+  const buildOpenProjectContextMenu = (
+    i18n: I18nType
+  ): Array<MenuItemTemplate> => {
+    const actions: Array<MenuItemTemplate> = [];
+    if (projectsList.length > 1) {
+      actions.push(
+        ...projectsList.slice(0, 3).map(fileMetadataAndStorageProviderName => {
+          // $FlowFixMe[incompatible-type]
+          return {
+            label: getProjectItemLabel(
+              fileMetadataAndStorageProviderName,
+              storageProviders,
+              i18n
+            ),
+            click: () => onOpenProject(fileMetadataAndStorageProviderName),
+          };
+        })
+      );
+
+      if (game) {
+        actions.push(
+          ...[
+            // $FlowFixMe[incompatible-type]
+            { type: 'separator' },
+            // $FlowFixMe[incompatible-type]
+            {
+              label: i18n._(t`See all in the game dashboard`),
+              click: () =>
+                onOpenGameManager({ game, widgetToScrollTo: 'projects' }),
+            },
+          ]
+        );
+      }
+    }
+
+    // $FlowFixMe[incompatible-type]
+    return actions;
+  };
+
+  const renderAdditionalActions = () => {
+    if (deletedCloudProject) {
+      const retentionInDays = limits
+        ? limits.capabilities.cloudProjects.deletedProjectRetentionInDays
+        : null;
+      const restorationTimeWindowInSeconds = limits
+        ? limits.capabilities.cloudProjects
+            .projectRestorationTimeWindowInSeconds
+        : null;
+      const deletedAt = deletedCloudProject.deletedAt;
+      const millisecondsSinceDeletion = deletedAt
+        ? Date.now() - Date.parse(deletedAt)
+        : null;
+      const daysLeftBeforeErasure =
+        retentionInDays != null && millisecondsSinceDeletion != null
+          ? Math.ceil(
+              (retentionInDays * 24 * 3600 * 1000 - millisecondsSinceDeletion) /
+                (24 * 3600 * 1000)
+            )
+          : null;
+      // When the user can only restore the project during a grace period
+      // shorter than the retention (i.e: without a subscription), show the
+      // time left to restore instead of the time left before erasure.
+      const minutesLeftToRestore =
+        restorationTimeWindowInSeconds != null &&
+        restorationTimeWindowInSeconds !== -1 &&
+        retentionInDays != null &&
+        restorationTimeWindowInSeconds < retentionInDays * 24 * 3600 &&
+        millisecondsSinceDeletion != null &&
+        millisecondsSinceDeletion < restorationTimeWindowInSeconds * 1000
+          ? Math.ceil(
+              (restorationTimeWindowInSeconds * 1000 -
+                millisecondsSinceDeletion) /
+                (60 * 1000)
+            )
+          : null;
+
+      // Keep the button so the layout stays the same, but no action is possible
+      // on a deleted project.
+      return (
+        <LineStackLayout noMargin alignItems="center">
+          {(minutesLeftToRestore != null ||
+            (daysLeftBeforeErasure != null && daysLeftBeforeErasure > 0)) && (
+            <div style={styles.erasureInfo}>
+              <div style={styles.erasureIconContainer}>
+                <History
+                  htmlColor={gdevelopTheme.text.color.secondary}
+                  fontSize="inherit"
+                />
+              </div>
+              <Text color="secondary" noMargin size="body-small">
+                {minutesLeftToRestore != null ? (
+                  minutesLeftToRestore === 1 ? (
+                    <Trans>1 min left to restore</Trans>
+                  ) : (
+                    <Trans>{minutesLeftToRestore} min left to restore</Trans>
+                  )
+                ) : daysLeftBeforeErasure === 1 ? (
+                  <Trans>1 day left before erasure</Trans>
+                ) : (
+                  <Trans>
+                    {daysLeftBeforeErasure} days left before erasure
+                  </Trans>
+                )}
+              </Text>
+            </div>
+          )}
+          <IconButton size="small" disabled>
+            <ThreeDotsMenu />
+          </IconButton>
+        </LineStackLayout>
+      );
+    }
+
+    return (
+      <ElementWithMenu
+        element={
+          <IconButton size="small" disabled={disabled}>
+            <ThreeDotsMenu />
+          </IconButton>
+        }
+        buildMenuTemplate={(i18n: I18nType) => {
+          const actions = [];
+
+          // Close action
+          if (isCurrentProjectOpened) {
+            actions.push({
+              label: i18n._(t`Close project`),
+              click: async () => {
+                await askToCloseProject();
+              },
+            });
+          }
+
+          // Management actions.
+          if (projectsList.length === 0) {
+            // No management possible, it's a game without a project found.
+          }
+
+          if (projectsList.length === 1) {
+            const file = projectsList[0];
+            if (file && file.storageProviderName === 'LocalFile') {
+              actions.push({
+                label: i18n._(t`Show in local folder`),
+                // $FlowFixMe[incompatible-type]
+                click: () => locateProjectFile(file),
+              });
+            }
+          }
+
+          if (projectsList.length > 1) {
+            // If there are multiple projects, suggest opening the game dashboard.
+            actions.push({
+              label: i18n._(t`See all projects`),
+              click: game
+                ? () =>
+                    // $FlowFixMe[incompatible-type]
+                    onOpenGameManager({ game, widgetToScrollTo: 'projects' })
+                : // $FlowFixMe[incompatible-type]
+                  undefined,
+            });
+          }
+
+          // Delete actions.
+          // Don't allow removing project if opened, as it would not result in any change in the list.
+          // (because an opened project is always displayed)
+          if (isCurrentProjectOpened || projectsList.length > 1) {
+            // No delete action possible.
+          } else {
+            if (actions.length > 0) {
+              // $FlowFixMe[incompatible-type]
+              actions.push({
+                type: 'separator',
+              });
+            }
+
+            actions.push({
+              label: i18n._(t`Delete`),
+              click: async () => {
+                // Extract word translation to ensure it is not wrongly translated in the sentence.
+                const translatedConfirmText = i18n._(t`delete`);
+
+                const hasBeenPublished = isPublishedOnGdGames
+                  ? t`Is published on gd.games`
+                  : t`Is not published on gd.games`;
+                const hasPlayerMessage = countOfSessionsLastWeek
+                  ? t`Had ${countOfSessionsLastWeek} players in the last week`
+                  : t`Had no players in the last week`;
+
+                const message = t`You're deleting a game which:${'\n\n'}
+                  - ${i18n._(hasBeenPublished)}
+                    ${'\n'}
+                  - ${i18n._(hasPlayerMessage)}
+                    ${'\n\n'}
+                    If you continue, the game and this project will be deleted.${'\n\n'}
+                    This action is irreversible. Do you want to continue?`;
+
+                const answer = await showDeleteConfirmation({
+                  title: gameName ? t`Delete ${gameName}` : t`Delete project`,
+                  header: renderThumbnail(),
+                  message: message,
+
+                  confirmButtonLabel: t`Delete game`,
+                  fieldMessage: t`To confirm, type "${translatedConfirmText}"`,
+                  confirmText: translatedConfirmText,
+                });
+                if (!answer) return;
+
+                // If the game is registered, unregister it.
+                // If it fails, this will throw, to prevent deleting a game with leaderboards or not owned.
+                if (game) {
+                  try {
+                    await onUnregisterGame();
+                  } catch (error) {
+                    console.error('Unable to unregister the game.', error);
+                    // Alert is handled by onUnregisterGame. Just ensure we don't continue.
+                    return;
+                  }
+                }
+
+                // If there is a project file (local or cloud), remove it.
+                // There can be only one here, thanks to the check above.
+                const file = projectsList[0];
+                if (file) {
+                  if (file.storageProviderName === 'Cloud') {
+                    await onDeleteCloudProject(file);
+                  } else {
+                    await removeRecentProjectFile(file);
+                  }
+                }
+
+                await onRefreshGames();
+              },
+            });
+          }
+
+          // $FlowFixMe[incompatible-type]
+          return actions;
+        }}
+      />
+    );
+  };
+
+  const renderButtons = () => {
+    if (deletedCloudProject) {
+      return (
+        <RaisedButton
+          primary
+          label={<Trans>Restore project</Trans>}
+          onClick={async () => {
+            if (!onRestoreProject) return;
+            try {
+              setIsRestoring(true);
+              await onRestoreProject();
+            } finally {
+              setIsRestoring(false);
+            }
+          }}
+          disabled={disabled || isRestoring || !onRestoreProject}
+        />
+      );
+    }
+
+    const openProjectLabel = isCurrentProjectOpened ? (
+      <Trans>Save</Trans>
+    ) : (
+      <Trans>Open</Trans>
+    );
+    const mainAction = isCurrentProjectOpened
+      ? onSaveProject
+      : projectsList.length > 0
+      ? () => onOpenProject(projectsList[0])
+      : () => {
+          showAlert({
+            title: t`No project to open`,
+            message: getNoProjectAlertMessage(),
+          });
+        };
+    const isMainActionDisabled =
+      disabled || (isCurrentProjectOpened && !canSaveProject);
+
+    return projectsList.length < 2 ? (
+      <RaisedButton
+        primary
+        label={openProjectLabel}
+        onClick={() => {
+          mainAction();
+        }}
+        disabled={isMainActionDisabled}
+      />
+    ) : (
+      <RaisedButtonWithSplitMenu
+        primary
+        label={openProjectLabel}
+        onClick={() => {
+          mainAction();
+        }}
+        buildMenuTemplate={i18n => buildOpenProjectContextMenu(i18n)}
+        disabled={isMainActionDisabled}
+      />
+    );
+  };
+
+  return (
+    <I18n>
+      {({ i18n }) => (
+        <div
+          className={classNames(classes.card, {
+            [classes.current]: isCurrentProjectOpened,
+          })}
+        >
+          <div className={classes.thumb}>{renderThumbnail()}</div>
+          <div className={classes.info}>
+            <div className={classes.title}>{gameName || vf('Без названия')}</div>
+            <div className={classes.meta}>
+              {renderLastModification(i18n)}
+              {!isSmallOrMediumScreen && renderStorageProvider(i18n)}
+            </div>
+          </div>
+          <div className={classes.actions}>
+            {renderButtons()}
+            {renderAdditionalActions()}
+          </div>
+        </div>
+      )}
+    </I18n>
+  );
+};
+
+export default GameDashboardCard;

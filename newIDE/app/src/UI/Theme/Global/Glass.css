@@ -1,0 +1,381 @@
+/*
+ * VoxForge: стекло. Работает в двух темах: тёмной (AMOLED) и светлой.
+ * Все цвета стекла — переменные --vf-*: ниже заданы значения для тёмной темы
+ * (по умолчанию) и для светлой (body.DefaultLightTheme). Новые стили стекла
+ * нужно писать через эти переменные, а не жёсткими цветами.
+ *
+ * Свечение за приложением даёт стеклу цвет, который можно размывать. Блюр —
+ * только на панелях, окнах и карточках, не на холсте сцены (дорого).
+ */
+
+/* ───────── Переменные: тёмная тема (по умолчанию) ───────── */
+body {
+  --vf-base: #000;
+  --vf-glow-1: rgba(255, 138, 61, 0.32);
+  --vf-glow-2: rgba(61, 220, 132, 0.08);
+  --vf-glow-3: rgba(255, 91, 91, 0.12);
+
+  --vf-pop-bg: rgba(16, 12, 9, 0.58);
+  --vf-pop-border: rgba(255, 255, 255, 0.1);
+  --vf-pop-shadow: 0 28px 90px rgba(0, 0, 0, 0.7),
+    inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  --vf-backdrop: rgba(0, 0, 0, 0.55);
+  --vf-tooltip-bg: rgba(20, 15, 11, 0.8);
+
+  --vf-field-bg: rgba(255, 255, 255, 0.05);
+  --vf-field-bg-hover: rgba(255, 255, 255, 0.08);
+  --vf-field-bg-focus: rgba(255, 255, 255, 0.07);
+  --vf-field-border: rgba(255, 255, 255, 0.12);
+  --vf-field-border-hover: rgba(255, 255, 255, 0.22);
+  --vf-chip-bg: rgba(255, 255, 255, 0.07);
+
+  --vf-btn-border: rgba(255, 255, 255, 0.18);
+  --vf-btn-bg: rgba(255, 255, 255, 0.04);
+  --vf-btn-disabled-border: rgba(255, 255, 255, 0.08);
+  --vf-btn-disabled-bg: rgba(255, 255, 255, 0.06);
+  --vf-btn-disabled-color: rgba(255, 255, 255, 0.35);
+
+  --vf-panel-bg: rgba(10, 8, 6, 0.6);
+  --vf-panel-border: rgba(255, 255, 255, 0.09);
+  --vf-panel-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 10px 30px rgba(0, 0, 0, 0.35);
+  --vf-panel-head-bg: rgba(255, 255, 255, 0.035);
+  --vf-panel-head-border: rgba(255, 255, 255, 0.08);
+  --vf-panel-title-bg: rgba(255, 255, 255, 0.06);
+
+  --vf-hover: rgba(255, 255, 255, 0.08);
+  --vf-line: rgba(255, 255, 255, 0.07);
+  --vf-event-ring: rgba(255, 255, 255, 0.09);
+  --vf-event-hilite: rgba(255, 255, 255, 0.05);
+  --vf-event-hover-bg: rgba(255, 255, 255, 0.055);
+
+  /* Карточки и плашки на главной */
+  --vf-card-bg: rgba(255, 255, 255, 0.045);
+  --vf-card-bg-hover: rgba(255, 255, 255, 0.07);
+  --vf-card-border: rgba(255, 255, 255, 0.1);
+  --vf-card-hilite: rgba(255, 255, 255, 0.06);
+
+  --vf-play-text: #8cf0b8;
+}
+
+/* ───────── Переменные: светлая тема ───────── */
+body.DefaultLightTheme {
+  --vf-base: #f7f3ee;
+  --vf-glow-1: rgba(255, 138, 61, 0.26);
+  --vf-glow-2: rgba(61, 220, 132, 0.1);
+  --vf-glow-3: rgba(255, 170, 120, 0.22);
+
+  --vf-pop-bg: rgba(255, 255, 255, 0.8);
+  --vf-pop-border: rgba(60, 40, 20, 0.12);
+  --vf-pop-shadow: 0 24px 70px rgba(80, 50, 20, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  --vf-backdrop: rgba(50, 32, 16, 0.3);
+  --vf-tooltip-bg: rgba(34, 26, 18, 0.9);
+
+  --vf-field-bg: rgba(60, 40, 20, 0.045);
+  --vf-field-bg-hover: rgba(60, 40, 20, 0.07);
+  --vf-field-bg-focus: rgba(255, 255, 255, 0.9);
+  --vf-field-border: rgba(60, 40, 20, 0.16);
+  --vf-field-border-hover: rgba(60, 40, 20, 0.3);
+  --vf-chip-bg: rgba(60, 40, 20, 0.06);
+
+  --vf-btn-border: rgba(60, 40, 20, 0.22);
+  --vf-btn-bg: rgba(255, 255, 255, 0.6);
+  --vf-btn-disabled-border: rgba(60, 40, 20, 0.1);
+  --vf-btn-disabled-bg: rgba(60, 40, 20, 0.07);
+  --vf-btn-disabled-color: rgba(60, 40, 20, 0.38);
+
+  --vf-panel-bg: rgba(255, 255, 255, 0.66);
+  --vf-panel-border: rgba(60, 40, 20, 0.1);
+  --vf-panel-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 10px 30px rgba(80, 50, 20, 0.12);
+  --vf-panel-head-bg: rgba(60, 40, 20, 0.04);
+  --vf-panel-head-border: rgba(60, 40, 20, 0.09);
+  --vf-panel-title-bg: rgba(255, 255, 255, 0.7);
+
+  --vf-hover: rgba(60, 40, 20, 0.06);
+  --vf-line: rgba(60, 40, 20, 0.09);
+  --vf-event-ring: rgba(60, 40, 20, 0.11);
+  --vf-event-hilite: rgba(255, 255, 255, 0.8);
+  --vf-event-hover-bg: rgba(60, 40, 20, 0.04);
+
+  --vf-card-bg: rgba(255, 255, 255, 0.72);
+  --vf-card-bg-hover: rgba(255, 255, 255, 0.92);
+  --vf-card-border: rgba(60, 40, 20, 0.12);
+  --vf-card-hilite: rgba(255, 255, 255, 0.9);
+
+  --vf-play-text: #0f7a45;
+}
+
+/* Чёрный только у html: фон body рисовался бы поверх свечения (body::before). */
+html {
+  background: #000;
+}
+
+html body,
+html body.DefaultDarkTheme,
+html body.DefaultLightTheme {
+  background: transparent !important;
+}
+
+/* Свечение за всем приложением. */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: radial-gradient(
+      55% 45% at 6% -5%,
+      var(--vf-glow-1),
+      rgba(255, 138, 61, 0) 70%
+    ),
+    radial-gradient(
+      45% 40% at 100% 8%,
+      var(--vf-glow-2),
+      rgba(61, 220, 132, 0) 70%
+    ),
+    radial-gradient(
+      70% 50% at 55% 115%,
+      var(--vf-glow-3),
+      rgba(255, 91, 91, 0) 70%
+    ),
+    var(--vf-base);
+}
+
+/* Общее стекло для всплывающих поверхностей. */
+.MuiDialog-paper,
+.MuiPopover-paper,
+.MuiMenu-paper,
+.MuiDrawer-paper,
+.MuiAutocomplete-paper,
+.MuiSnackbarContent-root {
+  background: var(--vf-pop-bg) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(160%);
+  backdrop-filter: blur(28px) saturate(160%);
+  border: 1px solid var(--vf-pop-border) !important;
+  box-shadow: var(--vf-pop-shadow) !important;
+}
+
+.MuiDialog-paper {
+  border-radius: 10px !important;
+}
+
+/* Затемнение под диалогами с лёгким размытием. */
+.MuiBackdrop-root:not(.MuiBackdrop-invisible) {
+  background: var(--vf-backdrop) !important;
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+
+.MuiTooltip-tooltip {
+  background: var(--vf-tooltip-bg) !important;
+  color: #f4ede5 !important;
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Пункты меню — тоже стеклянные при наведении. */
+.MuiMenuItem-root:hover,
+.MuiListItem-button:hover {
+  background: rgba(255, 138, 61, 0.12) !important;
+}
+
+/* ───────── Поля ввода и выпадающие списки ───────── */
+.MuiFilledInput-root {
+  background: var(--vf-field-bg) !important;
+  border: 1px solid var(--vf-field-border);
+  border-radius: 8px !important;
+  transition: border-color 240ms cubic-bezier(0.22, 1, 0.36, 1),
+    background-color 240ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 240ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.MuiFilledInput-root:hover {
+  background: var(--vf-field-bg-hover) !important;
+  border-color: var(--vf-field-border-hover);
+}
+
+.MuiFilledInput-root.Mui-focused {
+  background: var(--vf-field-bg-focus) !important;
+  border-color: var(--theme-primary-color);
+  box-shadow: 0 0 0 3px rgba(255, 138, 61, 0.18);
+}
+
+.MuiFilledInput-root.Mui-error {
+  border-color: #ff6b4a;
+}
+
+/* Подчёркивание Material убираем: рамка уже есть. */
+.MuiFilledInput-underline:before,
+.MuiFilledInput-underline:after {
+  display: none !important;
+}
+
+.MuiFormLabel-root.Mui-focused {
+  color: var(--theme-primary-light) !important;
+}
+
+/* ───────── Чипы ───────── */
+.MuiChip-root {
+  background-color: var(--vf-chip-bg) !important;
+  border: 1px solid var(--vf-field-border);
+  border-radius: 6px !important;
+}
+
+/* ───────── Кнопки ───────── */
+.MuiButton-outlined {
+  border: 1px solid var(--vf-btn-border) !important;
+  background: var(--vf-btn-bg);
+  transition: border-color 240ms cubic-bezier(0.22, 1, 0.36, 1),
+    background-color 240ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.MuiButton-outlined:hover {
+  border-color: var(--theme-primary-color) !important;
+  background: rgba(255, 138, 61, 0.1);
+}
+
+.MuiButton-outlined.Mui-disabled {
+  border-color: var(--vf-btn-disabled-border) !important;
+}
+
+/* Неактивная основная кнопка — стеклянная, не серая плита. */
+.MuiButton-contained.Mui-disabled {
+  background: var(--vf-btn-disabled-bg) !important;
+  color: var(--vf-btn-disabled-color) !important;
+  box-shadow: none !important;
+}
+
+/* ───────── Контурные блоки-сообщения ───────── */
+.MuiPaper-outlined {
+  border: 1px solid var(--vf-pop-border) !important;
+  background: var(--vf-btn-bg) !important;
+  border-radius: 8px !important;
+}
+
+/* ───────── Редактор в стиле Unity ─────────
+ * Панели — отдельные «окна» с тонкими зазорами, у каждой заголовок-вкладка с
+ * оранжевой линией. Холст сцены не блюрим (дорого), стекло только у панелей. */
+.mosaic-gd-theme .mosaic-root {
+  top: 5px;
+  right: 5px;
+  bottom: 5px;
+  left: 5px;
+}
+
+.mosaic-gd-theme .mosaic-tile {
+  margin: 2px;
+}
+
+.mosaic-gd-theme .mosaic-window {
+  border: 1px solid var(--vf-panel-border);
+  border-radius: 8px;
+  background: var(--vf-panel-bg);
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
+  backdrop-filter: blur(20px) saturate(140%);
+  box-shadow: var(--vf-panel-shadow);
+  overflow: hidden;
+}
+
+/* Полоса заголовка */
+.mosaic-gd-theme .mosaic-window-toolbar {
+  height: 32px !important;
+  padding: 0 4px 0 0 !important;
+  background: var(--vf-panel-head-bg) !important;
+  border-bottom: 1px solid var(--vf-panel-head-border) !important;
+  border-radius: 0 !important;
+  align-items: stretch !important;
+}
+
+/* Название — как вкладка в Unity: подсвечено и подчёркнуто оранжевым */
+.mosaic-gd-theme .mosaic-window .mosaic-window-title {
+  display: flex !important;
+  align-items: center;
+  height: 100%;
+  flex: 0 0 auto !important;
+  padding: 0 14px !important;
+  color: var(--theme-text-default-color) !important;
+  font-family: var(--gdevelop-modern-font-family);
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.01em;
+  background: var(--vf-panel-title-bg);
+  box-shadow: inset 0 -2px 0 var(--theme-primary-color);
+}
+
+.mosaic-gd-theme .mosaic-window-body,
+.mosaic-gd-theme .mosaic-editor-instances-list .mosaic-window-body {
+  background: transparent !important;
+}
+
+/* Разделители между панелями: подсвечиваются оранжевым при наведении */
+.mosaic-gd-theme .mosaic-split:hover .mosaic-split-line,
+.mosaic-gd-theme .mosaic-split.-row:hover .mosaic-split-line,
+.mosaic-gd-theme .mosaic-split.-column:hover .mosaic-split-line {
+  background-color: var(--theme-primary-color) !important;
+}
+
+/* ───────── Вкладки проекта и тулбар ───────── */
+.vf-tab:not(.vf-tab-active):hover {
+  background-color: var(--vf-hover) !important;
+}
+
+/* Тулбар: тонкая линия снизу, кнопки-иконки со скруглением */
+.MuiToolbar-root {
+  border-bottom: 1px solid var(--vf-line);
+}
+
+.MuiIconButton-root {
+  border-radius: 8px !important;
+  transition: background-color 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.MuiIconButton-root:hover {
+  background-color: var(--vf-hover) !important;
+}
+
+/* «Предпросмотр» — зелёный, как Play в Unity (зелёный у нас = «запустить») */
+#toolbar-preview-button,
+#toolbar-preview-split-menu-button {
+  background: rgba(61, 220, 132, 0.12) !important;
+  border: 1px solid rgba(61, 220, 132, 0.45) !important;
+  color: var(--vf-play-text) !important;
+  transition: background-color 240ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 240ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+#toolbar-preview-button:hover,
+#toolbar-preview-split-menu-button:hover {
+  background: rgba(61, 220, 132, 0.2) !important;
+  box-shadow: 0 0 20px rgba(61, 220, 132, 0.25);
+}
+
+#toolbar-preview-button svg,
+#toolbar-preview-split-menu-button svg {
+  color: #3ddc84;
+}
+
+/* ───────── Список событий ─────────
+ * Событие — стеклянная плашка. Условия («если») с зелёным оттенком, действия
+ * («делай») с оранжевым — это задано токенами темы. Высоты строк не трогаем:
+ * список виртуальный, он считает размеры сам. */
+.gd-events-sheet .rst__rowContents {
+  box-shadow: inset 0 0 0 1px var(--vf-event-ring),
+    inset 0 1px 0 var(--vf-event-hilite);
+  border-radius: 0 8px 8px 0 !important;
+  overflow: hidden;
+  transition: box-shadow 220ms cubic-bezier(0.22, 1, 0.36, 1),
+    background-color 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.gd-events-sheet .rst__rowContents:hover {
+  background-color: var(--vf-event-hover-bg);
+  box-shadow: inset 0 0 0 1px rgba(255, 138, 61, 0.35),
+    inset 0 1px 0 var(--vf-event-hilite);
+}
+
+.gd-events-sheet .move-handle {
+  border-radius: 8px 0 0 8px;
+}

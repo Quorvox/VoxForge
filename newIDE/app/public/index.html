@@ -1,0 +1,215 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <link rel="apple-touch-icon" sizes="180x180" href="%PUBLIC_URL%/apple-touch-icon.png?v=3">
+    <link rel="icon" type="image/svg+xml" href="%PUBLIC_URL%/favicon.svg?v=3">
+    <link rel="icon" type="image/png" sizes="32x32" href="%PUBLIC_URL%/favicon-32x32.png?v=3">
+    <link rel="shortcut icon" href="%PUBLIC_URL%/favicon.ico?v=3">
+    <link rel="icon" type="image/png" sizes="16x16" href="%PUBLIC_URL%/favicon-16x16.png?v=3">
+    <title>VoxForge</title>
+
+    <meta name="title" content="VoxForge game maker" />
+    <meta property="og:title" content="VoxForge" />
+    <meta name="description"
+      content="Build your own game super fast and without programming. Publish on mobile, desktop and on the web." />
+    <meta property="og:description"
+      content="Build your own game super fast and without programming. Publish on mobile, desktop and on the web." />
+    <meta property="og:url" content="https://quorvox.github.io" />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="%PUBLIC_URL%/VoxForge-editor-thumbnail.png" />
+    <meta property="og:image:width" content="1920" />
+    <meta property="og:image:height" content="1080" />
+    <meta name="twitter:card" content="summary_large_image" />
+
+    <style>
+      html, body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        background-color: #000;
+        background-image: none;
+        background-repeat: no-repeat;
+        overscroll-behavior: none;
+      }
+
+
+      /* Заставка VoxForge: показывается, пока загружается редактор. */
+      #vf-splash {
+        position: fixed;
+        inset: 0;
+        z-index: 2147483000;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 22px;
+        background: radial-gradient(55% 45% at 50% 0%, rgba(255, 138, 61, 0.28), rgba(255, 138, 61, 0) 70%),
+          radial-gradient(60% 50% at 50% 115%, rgba(138, 74, 198, 0.22), rgba(138, 74, 198, 0) 70%),
+          #000;
+        transition: opacity 700ms ease;
+      }
+      #vf-splash.vf-splash-hide { opacity: 0; pointer-events: none; }
+      #vf-splash svg {
+        width: 120px;
+        height: 120px;
+        animation: vf-splash-in 900ms cubic-bezier(0.22, 1, 0.36, 1) both;
+      }
+      .vf-splash-name {
+        font-family: 'Unbounded', 'Segoe UI', system-ui, sans-serif;
+        font-size: 30px;
+        font-weight: 700;
+        letter-spacing: -0.01em;
+        color: #f4ede5;
+        animation: vf-splash-in 900ms 120ms cubic-bezier(0.22, 1, 0.36, 1) both;
+      }
+      .vf-splash-bar {
+        width: 168px;
+        height: 2px;
+        overflow: hidden;
+        border-radius: 2px;
+        background: rgba(255, 255, 255, 0.12);
+        animation: vf-splash-in 900ms 240ms cubic-bezier(0.22, 1, 0.36, 1) both;
+      }
+      .vf-splash-bar span {
+        display: block;
+        width: 40%;
+        height: 100%;
+        border-radius: 2px;
+        background: linear-gradient(90deg, #ff8a3d, #ffc24b);
+        animation: vf-splash-bar 1400ms ease-in-out infinite;
+      }
+      @keyframes vf-splash-in {
+        from { opacity: 0; transform: translateY(10px) scale(0.97); }
+        to { opacity: 1; transform: none; }
+      }
+      @keyframes vf-splash-bar {
+        from { transform: translateX(-100%); }
+        to { transform: translateX(250%); }
+      }
+
+      @keyframes text-focus-in {
+        0% {
+          -webkit-filter: blur(12px);
+          filter: blur(12px);
+          opacity: 0;
+        }
+
+        100% {
+          -webkit-filter: blur(0px);
+          filter: blur(0px);
+          opacity: 1;
+        }
+      }
+    </style>
+
+    <!-- Progressive Web App support -->
+    <meta name="theme-color" content="#050506">
+    <link rel="manifest" href="%PUBLIC_URL%/manifest.json">
+  </head>
+  <body translate="no">
+    <!-- Root div used for React `Bootstrapper` component rendering-->
+    <div id="root"></div>
+
+    <div id="vf-splash" aria-hidden="true">
+      <svg viewBox="21 20 470 470" xmlns="http://www.w3.org/2000/svg">
+      <g>
+        <polygon points="100,30 46,252 184,164" fill="#6a37a3"/>
+        <polygon points="104,92 80,226 166,172" fill="#ff8a2b"/>
+        <polygon points="100,30 88,100 128,92" fill="#3b1d63"/>
+        <polygon points="184,164 256,170 256,292 170,262" fill="#ff9a35"/>
+        <polygon points="46,252 184,164 170,262 142,334 52,330" fill="#f0641d"/>
+        <polygon points="52,330 142,334 118,432 70,394" fill="#8a4ac6"/>
+        <polygon points="142,334 198,412 150,452 118,432" fill="#5a2d8f"/>
+        <polygon points="256,170 234,234 256,292" fill="#ffc24b"/>
+        <polygon points="140,274 214,298 160,302" fill="#3b1d63" opacity="0.9"/>
+        <polygon points="142,334 176,316 212,410 198,412" fill="#efe8f8"/>
+        <polygon points="176,316 196,316 212,410" fill="#ffffff"/>
+        <polygon points="148,284 210,302 190,326 158,312" fill="#1c1030"/>
+        <polygon points="184,298 202,304 192,314" fill="#ffffff"/>
+      </g>
+      <g transform="translate(512,0) scale(-1,1)">
+      <g>
+        <polygon points="100,30 46,252 184,164" fill="#6a37a3"/>
+        <polygon points="104,92 80,226 166,172" fill="#ff8a2b"/>
+        <polygon points="100,30 88,100 128,92" fill="#3b1d63"/>
+        <polygon points="184,164 256,170 256,292 170,262" fill="#ff9a35"/>
+        <polygon points="46,252 184,164 170,262 142,334 52,330" fill="#f0641d"/>
+        <polygon points="52,330 142,334 118,432 70,394" fill="#8a4ac6"/>
+        <polygon points="142,334 198,412 150,452 118,432" fill="#5a2d8f"/>
+        <polygon points="256,170 234,234 256,292" fill="#ffc24b"/>
+        <polygon points="140,274 214,298 160,302" fill="#3b1d63" opacity="0.9"/>
+        <polygon points="142,334 176,316 212,410 198,412" fill="#efe8f8"/>
+        <polygon points="176,316 196,316 212,410" fill="#ffffff"/>
+        <polygon points="148,284 210,302 190,326 158,312" fill="#1c1030"/>
+        <polygon points="184,298 202,304 192,314" fill="#ffffff"/>
+      </g>
+      </g>
+        <polygon points="196,316 256,288 316,316 300,410 256,474 212,410" fill="#ffffff"/>
+        <polygon points="256,288 316,316 300,410 256,474" fill="#e9e1f4"/>
+        <polygon points="232,386 280,386 256,416" fill="#25132f"/>
+      </svg>
+      <div class="vf-splash-name">VoxForge</div>
+      <div class="vf-splash-bar"><span></span></div>
+    </div>
+    <script>
+      // Заставку убираем, когда редактор появился (но не раньше чем через ~1 с,
+      // чтобы она не мелькала).
+      (function () {
+        var splash = document.getElementById('vf-splash');
+        if (!splash) return;
+        var started = Date.now();
+        var finished = false;
+        function finish() {
+          if (finished) return;
+          finished = true;
+          splash.classList.add('vf-splash-hide');
+          setTimeout(function () { if (splash.parentNode) splash.parentNode.removeChild(splash); }, 800);
+        }
+        function check() {
+          if (finished) return;
+          if (document.querySelector('.main-frame') && Date.now() - started > 1000) finish();
+          else setTimeout(check, 120);
+        }
+        check();
+        setTimeout(finish, 60000); // на всякий случай, чтобы заставка не зависла
+      })();
+    </script>
+
+    <script>
+      window["GD_STARTUP_TIMES"] = [["indexHtmlFirstScriptStarted", performance.now()]];
+
+      // Suppress benign errors.
+      // This MUST be registered here (before any webpack bundle runs) so that
+      // stopImmediatePropagation prevents react-error-overlay's handler.
+      //
+      // See also: Utils/SilenceBenignResizeObserverError.js.
+      (function() {
+        var lastLogTime = 0;
+        window.addEventListener('error', function(event) {
+          if (event.message === 'ResizeObserver loop completed with undelivered notifications.') {
+            var now = Date.now();
+            if (now - lastLogTime > 1000) {
+              lastLogTime = now;
+              console.log(
+                'Silenced benign "ResizeObserver loop completed with undelivered notifications" error. ' +
+                'This is a non-fatal browser warning (W3C spec): undelivered observations are deferred to the next frame.'
+              );
+            }
+            event.stopImmediatePropagation();
+          }
+        });
+      })();
+    </script>
+
+    <noscript>
+      <div style="font-family: sans-serif; padding: 15px;">
+        <p>
+          VoxForge is an open-source game engine. To use it, you must
+          <b>activate JavaScript</b> in your browser.
+        </p>
+      </div>
+    </noscript>
+  </body>
+</html>

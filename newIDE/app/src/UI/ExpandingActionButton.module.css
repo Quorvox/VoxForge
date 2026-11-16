@@ -1,0 +1,119 @@
+/* Плавное «замедление в конце» для всех движений кнопки. */
+.button {
+  --vf-ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+  display: inline-flex;
+  align-items: center;
+  height: 32px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  font-family: var(--gdevelop-modern-font-family);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  cursor: default;
+  transition: background-color 260ms var(--vf-ease),
+    border-color 260ms var(--vf-ease), box-shadow 260ms var(--vf-ease),
+    transform 120ms var(--vf-ease);
+}
+
+.primary {
+  background: var(--theme-primary-color);
+  color: var(--theme-primary-text-contrast-color);
+  box-shadow: 0 3px 0 var(--theme-primary-dark);
+}
+
+.secondary {
+  background: var(--vf-field-bg);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  color: var(--theme-text-default-color);
+  border-color: var(--vf-card-border);
+}
+
+.secondary:hover,
+.secondary:focus-visible {
+  border-color: var(--theme-primary-color);
+  background: rgba(255, 138, 61, 0.1);
+}
+
+.primary:hover,
+.primary:focus-visible {
+  background: var(--theme-primary-light);
+}
+
+.primary:active {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 var(--theme-primary-dark);
+}
+
+.button:focus-visible {
+  outline: 2px solid var(--theme-primary-color);
+  outline-offset: 2px;
+}
+
+.button:disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  font-size: 18px;
+}
+
+/* Раскрытие по реальной ширине текста: колонка grid 0fr -> 1fr. */
+.labelWrap {
+  display: grid;
+  grid-template-columns: 0fr;
+  transition: grid-template-columns 420ms var(--vf-ease);
+}
+
+.label {
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* Сама подпись: проявляется чуть позже и подъезжает слева. */
+.labelText {
+  display: block;
+  padding-right: 12px;
+  opacity: 0;
+  transform: translateX(-8px);
+  /* Уход: подпись гаснет вместе с сужением кнопки, без пустой «пилюли». */
+  transition: opacity 360ms ease-in-out, transform 420ms var(--vf-ease);
+}
+
+.button:hover .labelWrap,
+.button:focus-visible .labelWrap,
+.active .labelWrap {
+  grid-template-columns: 1fr;
+}
+
+.button:hover .labelText,
+.button:focus-visible .labelText,
+.active .labelText {
+  opacity: 1;
+  transform: none;
+  /* Появление: чуть позже раскрытия и быстрее. */
+  transition: opacity 260ms ease-out, transform 420ms var(--vf-ease);
+  transition-delay: 70ms;
+}
+
+/* Активный пункт навигации: оранжевая нижняя линия и подпись всегда на виду. */
+.active {
+  color: var(--theme-primary-light);
+  border-color: transparent;
+  background: rgba(255, 138, 61, 0.12);
+  box-shadow: inset 0 -2px 0 var(--theme-primary-color);
+  border-radius: 4px 4px 0 0;
+}
+

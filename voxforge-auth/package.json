@@ -1,0 +1,12 @@
+{
+  "name": "voxforge-auth",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Мостик между редактором VoxForge и Quorvox ID (OIDC), без зависимостей",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test test/*.test.js"
+  }
+}

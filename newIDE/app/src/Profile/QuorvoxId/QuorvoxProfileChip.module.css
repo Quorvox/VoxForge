@@ -1,0 +1,206 @@
+/* Кнопка «Войти» */
+.login {
+  --vf-ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  padding: 0 14px 0 6px;
+  border: 1px solid var(--vf-btn-border);
+  border-radius: 8px;
+  background: var(--vf-field-bg);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  color: var(--theme-text-default-color);
+  font-family: var(--gdevelop-modern-font-family);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: default;
+  transition: border-color 260ms var(--vf-ease), background-color 260ms var(--vf-ease),
+    box-shadow 260ms var(--vf-ease);
+}
+
+.login:hover,
+.login:focus-visible {
+  border-color: var(--theme-primary-color);
+  background: rgba(255, 138, 61, 0.12);
+  box-shadow: 0 0 22px rgba(255, 138, 61, 0.2);
+  outline: none;
+}
+
+.idMark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  background: linear-gradient(135deg, #ffc24b, #ff6a2b);
+  color: #1a0f0a;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.skeleton {
+  display: inline-block;
+  width: 84px;
+  height: 32px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+/* Вошёл: аватар и имя */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  padding: 0 12px 0 4px;
+  border: 1px solid var(--vf-card-border);
+  border-radius: 999px;
+  background: var(--vf-card-bg);
+  color: var(--theme-text-default-color);
+  font-family: var(--gdevelop-modern-font-family);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: default;
+  transition: border-color 260ms cubic-bezier(0.22, 1, 0.36, 1),
+    background-color 260ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.chip:hover,
+.chip:focus-visible {
+  border-color: rgba(255, 138, 61, 0.6);
+  background: rgba(255, 138, 61, 0.1);
+  outline: none;
+}
+
+.chipName {
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.avatar,
+.avatarLarge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #ffc24b, #ff6a2b);
+  color: #1a0f0a;
+  font-weight: 800;
+}
+
+.avatar {
+  width: 24px;
+  height: 24px;
+  font-size: 12px;
+}
+
+.avatarLarge {
+  width: 72px;
+  height: 72px;
+  font-size: 30px;
+  box-shadow: 0 0 40px rgba(255, 138, 61, 0.35);
+}
+
+/* Карточка профиля */
+.profile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 4px 4px;
+  font-family: var(--gdevelop-modern-font-family);
+}
+
+.name {
+  font-family: 'Unbounded', var(--gdevelop-modern-font-family);
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--theme-text-default-color);
+}
+
+.badge {
+  padding: 2px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 138, 61, 0.5);
+  background: rgba(255, 138, 61, 0.12);
+  color: var(--theme-primary-light);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.row {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  box-sizing: border-box;
+  border: 1px solid var(--vf-card-border);
+  border-radius: 8px;
+  background: var(--vf-card-bg);
+}
+
+.rowLabel {
+  font-size: 12px;
+  color: var(--theme-text-secondary-color);
+}
+
+.rowValue {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 14px;
+  color: var(--theme-text-default-color);
+  word-break: break-all;
+}
+
+.mono {
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  letter-spacing: 0.04em;
+}
+
+.copy {
+  flex-shrink: 0;
+  padding: 3px 9px;
+  border: 1px solid var(--vf-btn-border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--theme-text-secondary-color);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: default;
+  transition: border-color 200ms, color 200ms;
+}
+
+.copy:hover {
+  border-color: var(--theme-primary-color);
+  color: var(--theme-text-default-color);
+}
+
+.verified,
+.unverified {
+  flex-shrink: 0;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.verified {
+  color: #3ddc84;
+  background: rgba(61, 220, 132, 0.12);
+}
+
+.unverified {
+  color: #ffbc57;
+  background: rgba(255, 188, 87, 0.12);
+}
