@@ -1,22 +1,24 @@
 const { Client } = require('@xhayper/discord-rpc');
 
-const discordClient = new Client({
-  clientId: '718194112775454720',
-});
+// VoxForge: свой Application ID из https://discord.com/developers/applications.
+// Пока он не задан, статус в Discord не показываем (раньше тут был ID GDevelop
+// и в профиле писалось «GDevelop»).
+const clientId = process.env.VOXFORGE_DISCORD_CLIENT_ID || '';
 
-discordClient.on('error', _ => true); // Ignore error: They happen only when the discord client is not installed
-
-// Connect to Discord
-discordClient.login().catch(() => {
-  // Ignore connection errors - Discord client might not be installed
-});
+let discordClient = null;
+if (clientId) {
+  discordClient = new Client({ clientId });
+  discordClient.on('error', _ => true); // Ошибки бывают, если Discord не установлен
+  discordClient.login().catch(() => {
+    // Discord может быть не установлен
+  });
+}
 
 module.exports = function(ipc) {
-  // Set-up Discord Rich Presence event:
   ipc.on('update-discord-rich-presence', (event, config) => {
-    if (discordClient.user) {
+    if (discordClient && discordClient.user) {
       discordClient.user.setActivity(config).catch(() => {
-        // Ignore errors silently
+        // Тихо игнорируем
       });
     }
   });

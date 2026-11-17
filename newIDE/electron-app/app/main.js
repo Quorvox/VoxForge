@@ -188,6 +188,9 @@ app.on('window-all-closed', function() {
     // Ignore errors during shutdown
   }
   app.quit();
+  // VoxForge: если что-то держит выход (сервер, окно предпросмотра), не оставляем
+  // чёрный экран, а завершаем процесс через пару секунд.
+  setTimeout(() => app.exit(0), 2500).unref();
 });
 
 // Maps target (from window.open) to BrowserWindow ID for child windows.

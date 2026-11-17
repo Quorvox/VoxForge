@@ -7,6 +7,7 @@ import Dialog from '../UI/Dialog';
 import FlatButton from '../UI/FlatButton';
 import RaisedButton from '../UI/RaisedButton';
 import Text from '../UI/Text';
+import TextField from '../UI/TextField';
 import { CodeEditor } from '../CodeEditor';
 import UnsavedChangesContext from '../MainFrame/UnsavedChangesContext';
 import { mapFor } from '../Utils/MapFor';
@@ -148,8 +149,19 @@ const CodeModeDialog = ({
     [scripts.length]
   );
 
-  const addScript = (isPython: boolean) => {
-    if (project.getLayoutsCount() === 0) return;
+  // В Electron нет window.prompt, поэтому имя спрашиваем своим окошком.
+  const [nameDialog, setNameDialog] = React.useState<?{|
+    mode: 'add' | 'rename',
+    isPython: boolean,
+    value: string,
+  |}>(null);
+  const [message, setMessage] = React.useState<?string>(null);
+
+  const addScript = (isPython: boolean, rawName: string) => {
+    if (project.getLayoutsCount() === 0) {
+      setMessage('В проекте нет сцен. Создай сцену и попробуй снова.');
+      return;
+    }
     const layout = selected
       ? project.getLayout(selected.layoutName)
       : project.getLayoutAt(0);
@@ -159,9 +171,7 @@ const CodeModeDialog = ({
       JS_CODE_EVENT_TYPE,
       events.getEventsCount()
     );
-    const name = (
-      window.prompt('Название скрипта (можно пропустить):') || ''
-    ).trim();
+    const name = rawName.trim();
     const template = isPython
       ? unwrapPythonCode(PYTHON_EVENT_TEMPLATE) || ''
       : '// JavaScript: доступен runtimeScene\n';
@@ -183,17 +193,24 @@ const CodeModeDialog = ({
     unsavedChanges.triggerUnsavedChanges();
   };
 
-  const renameScript = () => {
+  const startRename = () => {
+    if (!selected) return;
+    const inline = gd.asJsCodeEvent(selected.event).getInlineCode();
+    const python = unwrapPythonCode(inline);
+    const body = python !== null ? python : inline;
+    setNameDialog({
+      mode: 'rename',
+      isPython: selected.isPython,
+      value: getScriptName(body) || '',
+    });
+  };
+
+  const renameScript = (newName: string) => {
     if (!selected) return;
     const jsEvent = gd.asJsCodeEvent(selected.event);
     const inline = jsEvent.getInlineCode();
     const python = unwrapPythonCode(inline);
     const body = python !== null ? python : inline;
-    const newName = window.prompt(
-      'Название скрипта (пусто — убрать название):',
-      getScriptName(body) || ''
-    );
-    if (newName === null) return;
     const newBody = setScriptName(body, newName.trim(), selected.isPython);
     jsEvent.setInlineCode(
       selected.isPython ? wrapPythonCode(newBody) : newBody
@@ -226,6 +243,14 @@ const CodeModeDialog = ({
     setRevision(r => r + 1);
   };
 
+  const applyNameDialog = () => {
+    if (!nameDialog) return;
+    const { mode, isPython, value } = nameDialog;
+    setNameDialog(null);
+    if (mode === 'add') addScript(isPython, value);
+    else renameScript(value.trim());
+  };
+
   const currentCode = selected
     ? (() => {
         const inline = gd.asJsCodeEvent(selected.event).getInlineCode();
@@ -246,18 +271,22 @@ const CodeModeDialog = ({
         <FlatButton
           key="py"
           label="+ Python"
-          onClick={() => addScript(true)}
+          onClick={() =>
+            setNameDialog({ mode: 'add', isPython: true, value: '' })
+          }
         />,
         <FlatButton
           key="js"
           label="+ JavaScript"
-          onClick={() => addScript(false)}
+          onClick={() =>
+            setNameDialog({ mode: 'add', isPython: false, value: '' })
+          }
         />,
         <FlatButton
           key="rename"
           label="Переименовать"
           disabled={!selected}
-          onClick={renameScript}
+          onClick={startRename}
         />,
         <FlatButton
           key="delete"
@@ -276,6 +305,48 @@ const CodeModeDialog = ({
         <RaisedButton key="run" primary label="Запуск" onClick={onRun} />,
       ]}
     >
+      {message && (
+        <div style={{ padding: '0 0 8px' }}>
+          <Text color="error">{message}</Text>
+        </div>
+      )}
+      {nameDialog && (
+        <Dialog
+          open
+          title={
+            nameDialog.mode === 'add' ? 'Новый скрипт' : 'Название скрипта'
+          }
+          maxWidth="xs"
+          fullWidth
+          onRequestClose={() => setNameDialog(null)}
+          actions={[
+            <FlatButton
+              key="cancel"
+              label="Отмена"
+              onClick={() => setNameDialog(null)}
+            />,
+            <RaisedButton
+              key="ok"
+              primary
+              label={nameDialog.mode === 'add' ? 'Создать' : 'Сохранить'}
+              onClick={applyNameDialog}
+            />,
+          ]}
+          onApply={applyNameDialog}
+        >
+          <TextField
+            autoFocus="desktop"
+            fullWidth
+            floatingLabelText="Название (можно оставить пустым)"
+            value={nameDialog.value}
+            onChange={(e, text) =>
+              setNameDialog(current =>
+                current ? { ...current, value: text } : current
+              )
+            }
+          />
+        </Dialog>
+      )}
       <div style={styles.body}>
         <div style={styles.list}>
           {scripts.length === 0 && (

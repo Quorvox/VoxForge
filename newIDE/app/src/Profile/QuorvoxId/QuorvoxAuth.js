@@ -7,7 +7,9 @@ export const AUTH_URL: string = (
   process.env.REACT_APP_VOXFORGE_AUTH_URL ||
   (window.location.hostname === 'localhost'
     ? 'http://localhost:3050'
-    : window.location.origin)
+    : /^https?:$/.test(window.location.protocol)
+    ? window.location.origin
+    : 'https://voxforge.quorvox.ru')
 ).replace(/\/$/, '');
 
 export type QuorvoxUser = {|

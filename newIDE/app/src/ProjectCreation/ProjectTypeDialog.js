@@ -28,18 +28,18 @@ type ProjectType = {|
 const projectTypes: Array<ProjectType> = [
   {
     id: 'game',
-    title: 'Игра',
+    title: 'Конструктор',
     description:
-      '2D и 3D, для Windows, Android и веба. Начни с шаблона или с пустой сцены.',
+      'Визуальный редактор на основе GDevelop: сцены, события и шаблоны. Для Windows, Android и веба.',
     // title/description — русские ключи, переводятся при показе через vf().
     icon: <ControllerIcon />,
     available: true,
   },
   {
     id: 'codegame',
-    title: 'Код-игра',
+    title: 'Код',
     description:
-      'Игры на microScript из microStudio: открой папку игры, правь код и запускай.',
+      'Пустой лист: пишешь игру на microScript с нуля. Или открой готовую папку с игрой.',
     icon: <CodeIcon />,
     available: true,
   },

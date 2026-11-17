@@ -10,11 +10,11 @@ const updateDiscordRichPresence = (project: ?gdProject) => {
   if (ipc === null) return;
 
   const config = {
-    details: project ? 'Working on:' : 'Not working on',
-    state: project ? project.getName() : 'any game',
+    details: project ? 'Работает над:' : 'Ничего не открыто',
+    state: project ? project.getName() : 'VoxForge',
     startTimestamp: richPresenceStartTimestamp,
-    largeImageKey: 'gdicon',
-    largeImageText: 'GDevelop',
+    largeImageKey: 'voxforge',
+    largeImageText: 'VoxForge',
   };
 
   ipc.send('update-discord-rich-presence', config);

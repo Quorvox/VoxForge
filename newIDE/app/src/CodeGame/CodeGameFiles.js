@@ -9,6 +9,10 @@ import {
   putFile,
   ensureBrowserSWPreviewSession,
 } from '../ExportAndShare/BrowserExporters/BrowserSWPreviewLauncher/BrowserSWPreviewIndexedDB';
+import {
+  loadDirectoryHandle,
+  saveDirectoryHandle,
+} from '../ProjectsStorage/BrowserStorageProvider/BrowserProjectDatabase';
 
 const electron = optionalRequire('electron');
 const nodeFs = optionalRequire('fs');
@@ -18,14 +22,16 @@ const nodeHttp = optionalRequire('http');
 /** Папка игры: в браузере — handle (File System Access), в приложении — путь. */
 export const isDesktopApp = (): boolean => !!electron;
 
-export const pickGameFolderDesktop = async (): Promise<?{|
+export const pickGameFolderDesktop = async (
+  title?: string = 'Папка игры microStudio'
+): Promise<?{|
   desktopPath: string,
 |}> => {
   const remote = optionalRequire('@electron/remote');
   if (!remote) throw new Error('Не удалось открыть окно выбора папки.');
   const result = await remote.dialog.showOpenDialog({
-    title: 'Папка игры microStudio',
-    properties: ['openDirectory'],
+    title,
+    properties: ['openDirectory', 'createDirectory'],
   });
   if (result.canceled || !result.filePaths.length) return null;
   return { desktopPath: result.filePaths[0] };
@@ -271,7 +277,91 @@ export const writeIndexHtml = async (
 
 // --- Ресурсы игры: спрайты, звуки, музыка лежат в папках рядом с index.html. ---
 
-export type AssetFolder = 'sprites' | 'sounds' | 'music';
+export type AssetFolder = 'sprites' | 'sounds' | 'music' | 'maps';
+
+// --- Недавние игры: показываем на стартовом экране. ---
+
+export type RecentGame = {|
+  id: string,
+  title: string,
+  /** Приложение: путь к папке. В браузере: null, папка лежит в IndexedDB. */
+  path: ?string,
+  openedAt: number,
+|};
+
+const RECENT_KEY = 'vf-codegame-recent';
+
+export const loadRecentGames = (): Array<RecentGame> => {
+  try {
+    const list = JSON.parse(window.localStorage.getItem(RECENT_KEY) || '[]');
+    return Array.isArray(list) ? list : [];
+  } catch (error) {
+    return [];
+  }
+};
+
+const saveRecentGames = (list: Array<RecentGame>) => {
+  try {
+    window.localStorage.setItem(RECENT_KEY, JSON.stringify(list.slice(0, 8)));
+  } catch (error) {
+    // без истории тоже можно жить
+  }
+};
+
+export const forgetRecentGame = (id: string) =>
+  saveRecentGames(loadRecentGames().filter(item => item.id !== id));
+
+/** Запоминает открытую папку (в браузере сохраняет и сам handle). */
+export const rememberGame = async (
+  directory: any,
+  title: string
+): Promise<void> => {
+  const list = loadRecentGames();
+  let id: ?string = null;
+  const path = directory.desktopPath || null;
+  if (path) {
+    id = path;
+  } else {
+    for (const item of list) {
+      try {
+        const stored = await loadDirectoryHandle(`codegame:${item.id}`);
+        if (stored && (await stored.isSameEntry(directory))) {
+          id = item.id;
+          break;
+        }
+      } catch (error) {
+        // не получилось сравнить: считаем новой
+      }
+    }
+    if (!id) id = `g${Date.now()}`;
+    try {
+      await saveDirectoryHandle(`codegame:${id}`, directory);
+    } catch (error) {
+      return;
+    }
+  }
+  const entry: RecentGame = { id, title, path, openedAt: Date.now() };
+  saveRecentGames([entry, ...list.filter(item => item.id !== id)]);
+};
+
+/** Открывает запомненную папку снова (в браузере спросит доступ). */
+export const reopenRecentGame = async (recent: RecentGame): Promise<any> => {
+  if (recent.path) {
+    if (!nodeFs || !nodeFs.existsSync(recent.path)) {
+      throw new Error('Этой папки больше нет на диске.');
+    }
+    return { desktopPath: recent.path };
+  }
+  const handle = await loadDirectoryHandle(`codegame:${recent.id}`);
+  if (!handle) throw new Error('Папка забыта. Открой её заново.');
+  const permission = { mode: 'readwrite' };
+  if ((await handle.queryPermission(permission)) !== 'granted') {
+    if ((await handle.requestPermission(permission)) !== 'granted') {
+      throw new Error('Нет доступа к папке.');
+    }
+  }
+  return handle;
+};
 
 export const listAssets = async (
   directory: any,
@@ -326,4 +416,349 @@ export const readAssetUrl = async (
 export const injectConsoleBridge = (html: string): string => {
   const bridge = `<script>(function(){function send(type,args){try{window.parent.postMessage({__vf:true,type:type,text:Array.prototype.map.call(args,function(a){try{return typeof a==='string'?a:JSON.stringify(a)}catch(e){return String(a)}}).join(' ')},'*')}catch(e){}}['log','info','warn','error'].forEach(function(k){var o=console[k];console[k]=function(){send(k,arguments);try{o.apply(console,arguments)}catch(e){}}});window.addEventListener('error',function(e){send('error',[e.message+' ('+(e.filename||'').split('/').pop()+':'+e.lineno+')'])});window.addEventListener('unhandledrejection',function(e){send('error',['Promise: '+(e.reason&&e.reason.message||e.reason)])})})();</script>`;
   return html.replace(/<head>/i, `<head>${bridge}`);
+};
+
+// --- Новая игра с нуля: кладём в пустую папку движок и пустой main.ms. ---
+
+const TEMPLATE_FILES = [
+  'compiler.js',
+  'parser.js',
+  'processor.js',
+  'program.js',
+  'routine.js',
+  'runner.js',
+  'token.js',
+  'tokenizer.js',
+  'transpiler.js',
+  'microengine.js',
+  'icon16.png',
+  'icon32.png',
+  'icon64.png',
+  'icon180.png',
+  'icon192.png',
+  'icon512.png',
+  'icon1024.png',
+];
+
+const loadTemplateFile = (name: string): Promise<ArrayBuffer> =>
+  new Promise((resolve, reject) => {
+    const request = new XMLHttpRequest();
+    request.open('GET', `codegame-template/${name}`);
+    request.responseType = 'arraybuffer';
+    request.onload = () =>
+      (request.status === 200 || request.status === 0) && request.response
+        ? resolve(request.response)
+        : reject(new Error(`Не нашёл файл шаблона ${name}.`));
+    request.onerror = () => reject(new Error(`Не нашёл файл шаблона ${name}.`));
+    request.send();
+  });
+
+const writeFileTo = async (
+  directory: any,
+  relativePath: string,
+  data: ArrayBuffer | string
+): Promise<void> => {
+  if (directory.desktopPath) {
+    const full = nodePath.join(directory.desktopPath, relativePath);
+    nodeFs.mkdirSync(nodePath.dirname(full), { recursive: true });
+    nodeFs.writeFileSync(
+      full,
+      typeof data === 'string' ? data : Buffer.from(data)
+    );
+    return;
+  }
+  const parts = relativePath.split('/');
+  const fileName = parts.pop();
+  let current = directory;
+  for (const part of parts) {
+    current = await current.getDirectoryHandle(part, { create: true });
+  }
+  const fileHandle = await current.getFileHandle(fileName, { create: true });
+  const writable = await fileHandle.createWritable();
+  await writable.write(data);
+  await writable.close();
+};
+
+export const NEW_GAME_MAIN = `// Игра на microScript. Нажми «Запуск» (F5), чтобы увидеть результат.
+
+// Вызывается один раз при старте.
+init = function()
+  x = 0
+end
+
+// Вызывается 60 раз в секунду: логика игры.
+update = function()
+  x = x + 0.4
+  if x > screen.width / 2 then x = -screen.width / 2 end
+end
+
+// Вызывается каждый кадр: рисование.
+draw = function()
+  screen.clear("rgb(18,14,12)")
+  screen.fillRoundRect(x, 0, 30, 30, 8, "rgb(255,138,61)")
+  screen.drawText("Привет, VoxForge!", 0, 60, 18, "rgb(244,237,229)")
+end
+`;
+
+/** Создаёт новую игру в выбранной пустой папке и возвращает название файла кода. */
+export const createBlankGame = async (
+  directory: any,
+  title: string
+): Promise<void> => {
+  // Не затираем чужую игру.
+  if (directory.desktopPath) {
+    if (nodeFs.existsSync(nodePath.join(directory.desktopPath, 'index.html'))) {
+      throw new Error(
+        'В этой папке уже есть игра. Выбери пустую папку или открой эту игру.'
+      );
+    }
+  } else {
+    const permission = { mode: 'readwrite' };
+    if ((await directory.queryPermission(permission)) !== 'granted') {
+      if ((await directory.requestPermission(permission)) !== 'granted') {
+        throw new Error('Нет разрешения на запись в папку.');
+      }
+    }
+    let hasIndex = true;
+    try {
+      await directory.getFileHandle('index.html');
+    } catch (error) {
+      hasIndex = false;
+    }
+    if (hasIndex) {
+      throw new Error(
+        'В этой папке уже есть игра. Выбери пустую папку или открой эту игру.'
+      );
+    }
+  }
+
+  const safeTitle = title.trim() || 'Моя игра';
+  const escapedTitle = safeTitle
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+
+  for (const name of TEMPLATE_FILES) {
+    await writeFileTo(directory, name, await loadTemplateFile(name));
+  }
+  const template = new TextDecoder().decode(
+    await loadTemplateFile('index.template.html')
+  );
+  const emptyHtml = template
+    .replace('{{TITLE}}', () => escapedTitle)
+    .replace('{{CODE}}', () => '');
+  const game = parseCodeGame(emptyHtml);
+  game.files.push({ name: 'main.ms', text: NEW_GAME_MAIN, original: '' });
+  await writeFileTo(directory, 'index.html', buildCodeGameHtml(game));
+  await writeFileTo(
+    directory,
+    'manifest.json',
+    JSON.stringify(
+      {
+        name: safeTitle,
+        short_name: safeTitle,
+        theme_color: '#000000',
+        background_color: '#000000',
+        display: 'fullscreen',
+        orientation: 'landscape',
+        start_url: '.',
+        icons: [
+          { src: 'icon192.png', type: 'image/png', sizes: '192x192' },
+          { src: 'icon512.png', type: 'image/png', sizes: '512x512' },
+        ],
+      },
+      null,
+      2
+    )
+  );
+  for (const folder of ['sprites', 'sounds', 'music', 'maps']) {
+    if (directory.desktopPath) {
+      nodeFs.mkdirSync(nodePath.join(directory.desktopPath, folder), {
+        recursive: true,
+      });
+    } else {
+      await directory.getDirectoryHandle(folder, { create: true });
+    }
+  }
+};
+
+// --- Ресурсы игры: добавить, удалить, обновить список resources в index.html. ---
+
+export const ASSET_ACCEPT: { [folder: string]: string } = {
+  sprites: '.png,.jpg,.jpeg',
+  sounds: '.wav,.mp3,.ogg',
+  music: '.mp3,.ogg,.wav',
+  maps: '.json',
+};
+
+const RESOURCE_KEY: { [folder: string]: string } = {
+  sprites: 'images',
+  sounds: 'sounds',
+  music: 'music',
+};
+
+const RESOURCES_PATTERN = /var resources = (\{[\s\S]*?\});\s*\n?\s*var graphics/;
+
+const sanitizeAssetName = (name: string): string =>
+  name
+    .trim()
+    .replace(/\s+/g, '_')
+    .replace(/[^\p{L}\p{N}_.\-]/gu, '');
+
+type AssetEntry = {|
+  file: string,
+  version: number,
+  size: number,
+  properties: Object,
+|};
+
+const listAssetSizes = async (
+  directory: any,
+  folder: string
+): Promise<Array<{| name: string, size: number |}>> => {
+  try {
+    if (directory.desktopPath) {
+      const target = nodePath.join(directory.desktopPath, folder);
+      if (!nodeFs.existsSync(target)) return [];
+      return nodeFs
+        .readdirSync(target)
+        .map(name => ({
+          name,
+          size: nodeFs.statSync(nodePath.join(target, name)).size,
+          isDir: nodeFs.statSync(nodePath.join(target, name)).isDirectory(),
+        }))
+        .filter(item => !item.isDir)
+        .map(({ name, size }) => ({ name, size }));
+    }
+    const subDirectory = await directory.getDirectoryHandle(folder);
+    const result = [];
+    for await (const [name, handle] of subDirectory.entries()) {
+      if (handle.kind === 'file') {
+        result.push({ name, size: (await handle.getFile()).size });
+      }
+    }
+    return result;
+  } catch (error) {
+    return [];
+  }
+};
+
+/** Копирует выбранные файлы в папку ресурсов. Возвращает имена добавленных. */
+export const importAssetFiles = async (
+  directory: any,
+  folder: AssetFolder,
+  files: Array<File>
+): Promise<Array<string>> => {
+  const allowed = (ASSET_ACCEPT[folder] || '').split(',');
+  const added = [];
+  for (const file of files) {
+    const extension = `.${(file.name.split('.').pop() || '').toLowerCase()}`;
+    if (!allowed.includes(extension)) continue;
+    const name = sanitizeAssetName(file.name);
+    if (!name) continue;
+    await writeFileTo(directory, `${folder}/${name}`, await file.arrayBuffer());
+    added.push(name);
+  }
+  return added;
+};
+
+export const deleteAssetFile = async (
+  directory: any,
+  folder: AssetFolder,
+  name: string
+): Promise<void> => {
+  if (directory.desktopPath) {
+    nodeFs.unlinkSync(nodePath.join(directory.desktopPath, folder, name));
+    return;
+  }
+  const subDirectory = await directory.getDirectoryHandle(folder);
+  await subDirectory.removeEntry(name);
+};
+
+/**
+ * Пересобирает список resources в index.html по тому, что лежит в папках.
+ * У старых файлов остаются свои настройки (кадры, скорость), у новых по умолчанию.
+ */
+export const syncResourcesInHtml = async (
+  directory: any,
+  html: string,
+  changedNames: Array<string> = []
+): Promise<string> => {
+  const match = RESOURCES_PATTERN.exec(html);
+  if (!match) return html;
+  let previous: { [key: string]: Array<AssetEntry> } = {};
+  try {
+    previous = JSON.parse(match[1]);
+  } catch (error) {
+    previous = {};
+  }
+  const next: { [key: string]: Array<AssetEntry> } = { ...previous };
+  for (const folder of Object.keys(RESOURCE_KEY)) {
+    const key = RESOURCE_KEY[folder];
+    const old = previous[key] || [];
+    const sizes = await listAssetSizes(directory, folder);
+    next[key] = sizes
+      .map(({ name, size }) => {
+        const existing = old.find(entry => entry.file === name);
+        const touched = changedNames.includes(`${folder}/${name}`);
+        return {
+          file: name,
+          version: existing ? existing.version + (touched ? 1 : 0) : 1,
+          size,
+          properties: existing
+            ? existing.properties
+            : folder === 'sprites'
+            ? { frames: 1, fps: 5 }
+            : {},
+        };
+      })
+      .sort((a, b) => (a.file < b.file ? -1 : 1));
+  }
+  return html.replace(RESOURCES_PATTERN, () =>
+    `var resources = ${JSON.stringify(next)};\nvar graphics`
+  );
+};
+
+/** Кадры и скорость анимации спрайта из списка resources. */
+export const getSpriteProps = (
+  html: string,
+  file: string
+): {| frames: number, fps: number |} => {
+  const match = RESOURCES_PATTERN.exec(html);
+  try {
+    const parsed = match ? JSON.parse(match[1]) : {};
+    const entry = (parsed.images || []).find(item => item.file === file);
+    const properties = (entry && entry.properties) || {};
+    return {
+      frames: Number(properties.frames) || 1,
+      fps: Number(properties.fps) || 5,
+    };
+  } catch (error) {
+    return { frames: 1, fps: 5 };
+  }
+};
+
+export const setSpriteProps = (
+  html: string,
+  file: string,
+  props: {| frames: number, fps: number |}
+): string => {
+  const match = RESOURCES_PATTERN.exec(html);
+  if (!match) return html;
+  try {
+    const parsed = JSON.parse(match[1]);
+    const entry = (parsed.images || []).find(item => item.file === file);
+    if (!entry) return html;
+    entry.properties = {
+      ...entry.properties,
+      frames: Math.max(1, Math.round(props.frames)),
+      fps: Math.max(1, Math.round(props.fps)),
+    };
+    entry.version = (entry.version || 1) + 1;
+    return html.replace(RESOURCES_PATTERN, () =>
+      `var resources = ${JSON.stringify(parsed)};\nvar graphics`
+    );
+  } catch (error) {
+    return html;
+  }
 };

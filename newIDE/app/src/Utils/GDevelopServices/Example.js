@@ -36,10 +36,16 @@ export type AllExamples = {|
 // VoxForge: на нашем сайте список шаблонов лежит рядом (/api/asset): сервер
 // GDevelop не пускает чужие сайты. Все примеры под лицензиями MIT/CC0.
 // На localhost (разработка) читаем напрямую.
-const getExamplesApiBaseUrl = (): string =>
-  window.location.hostname === 'localhost'
-    ? GDevelopAssetApi.baseUrl
-    : `${window.location.origin}/api/asset`;
+// В приложении страница открыта с file://, там своего /api нет: берём с сайта.
+const getExamplesApiBaseUrl = (): string => {
+  if (window.location.hostname === 'localhost') {
+    return GDevelopAssetApi.baseUrl;
+  }
+  if (/^https?:$/.test(window.location.protocol)) {
+    return `${window.location.origin}/api/asset`;
+  }
+  return 'https://voxforge.quorvox.ru/api/asset';
+};
 
 export const listAllExamples = async (): Promise<AllExamples> => {
   // $FlowFixMe[underconstrained-implicit-instantiation]
